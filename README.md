@@ -6,6 +6,7 @@ using the feedback tool, and the frontend shows the cracking progress in real
 time.
 
 <p>
+  <img alt="CI" src="https://github.com/js3888-shunshun/crack-safe/actions/workflows/ci.yml/badge.svg" />
   <img alt="Backend" src="https://img.shields.io/badge/Backend-Flask%203.0-000000?logo=flask" />
   <img alt="Frontend" src="https://img.shields.io/badge/Frontend-Angular%2018-DD0031?logo=angular&logoColor=white" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white" />
@@ -185,12 +186,15 @@ curl -X POST http://127.0.0.1:5000/api/crack_safe/ \
 ```
 
 ```json
-{ "attempts": 49, "time_taken": 0.000056 }
+{ "attempts": 49, "time_taken": 0.000056, "cached": false }
 ```
+
+Results are memoized (the function is deterministic), so a repeat request for
+the same combination returns `"cached": true` without recomputing.
 
 | Case | Response |
 |------|----------|
-| Valid 10 digits | `200` with `{ attempts, time_taken }` |
+| Valid 10 digits | `200` with `{ attempts, time_taken, cached }` |
 | Not 10 digits, non-numeric, or missing | `400` with `{ "error": "actual_combination must be exactly 10 digits" }` |
 
 ### `POST /api/crack_safe_stream/` (bonus, live stream)
@@ -236,6 +240,15 @@ Rebuild the frontend bundle after editing Angular source:
 
 ```bash
 cd frontend && npm run build               # outputs to ../app/static
+```
+
+### Docker
+
+A multi-stage build compiles the Angular app and serves it, together with the
+API, from a production WSGI server (gunicorn):
+
+```bash
+docker compose up --build                  # http://127.0.0.1:5000
 ```
 
 ## Testing

@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+venv
+frontend/.angular
+frontend/dist
+# built fresh inside the image; don't ship the host copy
+app/static
+*.md
