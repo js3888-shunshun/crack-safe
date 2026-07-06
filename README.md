@@ -13,12 +13,6 @@ time.
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white" />
 </p>
 
-<p>
-  <a href="https://render.com/deploy?repo=https://github.com/js3888-shunshun/crack-safe">
-    <img alt="Deploy to Render" src="https://render.com/images/deploy-to-render-button.svg" />
-  </a>
-</p>
-
 > Live demo: **https://crack-safe.onrender.com/**
 > (free instance; the first request after idle takes a few seconds to wake)
 
@@ -32,7 +26,8 @@ safe is cracked, showing the final `attempts` and `time_taken`.
 The algorithm is not brute force. Instead of searching the 10 billion possible
 combinations, it uses the feedback tool (how many digits sit in the correct
 position) to determine each digit independently, giving a worst case of 92
-attempts.
+attempts. The UI dramatizes this with a live count of combinations eliminated
+and a side-by-side comparison against brute force.
 
 ### Requirements coverage
 
@@ -173,26 +168,32 @@ one is solved correctly, with at most 92 attempts and no failures.
 | Core | Python 3.13, no dependencies | Portable, unit-tested in isolation |
 | Frontend | Angular 18, standalone components | Signals for reactive state, `@if` control flow |
 | Streaming | fetch + ReadableStream, wrapped in an RxJS Observable | Cancelable via AbortController on unsubscribe |
-| Styling | Hand-written CSS (dark theme) | Global stylesheet, no UI framework |
-| Tests | pytest (backend), Karma/Jasmine (frontend) | 10 backend tests including parametrized edge cases |
+| Styling | Hand-written CSS, dark + light theme via CSS variables | Global stylesheet, no UI framework |
+| Tests | pytest (backend), Karma/Jasmine (frontend) | 17 backend tests: algorithm + API endpoints, caching, validation |
 
 ## Project structure
 
 ```text
 crack-safe/
 ├── app/                          # Flask backend
-│   ├── app.py                    #   API + serves built Angular; streaming endpoint
+│   ├── app.py                    #   API, result cache, streaming endpoint, serves Angular
 │   ├── crack_safe.py             #   Part 1 algorithm (pure, dependency-free)
 │   └── static/                   #   Angular production build output (generated)
 ├── frontend/                     # Angular source
 │   ├── src/app/
-│   │   ├── app.component.ts       #   UI logic: signals, live-update handling
-│   │   ├── app.component.html     #   template: form, metrics, progress
+│   │   ├── app.component.ts       #   UI logic: signals, keyspace + comparison, live updates
+│   │   ├── app.component.html     #   template: form, controls, metrics, safe display
 │   │   └── crack-safe.service.ts  #   API client: one-shot + streaming
+│   ├── src/styles.css             #   global styling, dark + light theme
 │   ├── proxy.conf.json            #   dev proxy: /api to Flask :5000
 │   └── angular.json               #   build outputs into ../app/static
 ├── tests/
-│   └── test_crack_safe.py        # unit + parametrized correctness tests
+│   ├── test_crack_safe.py        # algorithm unit + parametrized tests
+│   └── test_api.py               # endpoint, caching, and validation tests
+├── .github/workflows/ci.yml      # CI: backend tests, frontend build, docker build
+├── Dockerfile                    # multi-stage: Node build -> gunicorn runtime
+├── docker-compose.yml
+├── render.yaml                   # Render deploy blueprint
 ├── requirements.txt
 └── README.md
 ```
@@ -221,17 +222,18 @@ the same combination returns `"cached": true` without recomputing.
 
 ### `POST /api/crack_safe_stream/` (bonus, live stream)
 
-Same request body. Responds with `application/x-ndjson`, one JSON object per
-line:
+Body accepts `actual_combination` and an optional `step_delay` (seconds per
+attempt, clamped to `0`–`0.1`; the frontend's speed slider sets it). Responds
+with `application/x-ndjson`, one JSON object per line:
 
 ```json
 {"status":"running","attempts":8,"guess":"0800000000","score":2,"cracked_so_far":"0800??????"}
 {"status":"done","attempts":49,"time_taken":0.000061}
 ```
 
-Note: the streamed `time_taken` is slightly larger than the one-shot endpoint's,
-because the stream paces updates (about 15 ms per attempt) so the counter is
-visible. The required endpoint reports the true, un-throttled compute time.
+Note: the streamed `time_taken` includes the pacing delay so the counter is
+visible. The required one-shot endpoint reports the true, un-throttled compute
+time, which is what the comparison panel uses.
 
 ## Running it
 
@@ -275,26 +277,22 @@ docker compose up --build                  # http://127.0.0.1:5000
 
 ### Deploy to Render
 
-The repo includes `render.yaml`, so it deploys as a Docker web service:
-
-1. Push to GitHub (already done).
-2. On Render, choose New, then Blueprint, and point it at this repo (or use
-   the "Deploy to Render" button above). Render reads `render.yaml`.
-3. Render builds the Dockerfile and starts gunicorn on its injected `$PORT`.
-4. Copy the resulting `*.onrender.com` URL into the live-demo line above.
-
-The free instance sleeps when idle, so the first request after a pause takes a
-few seconds to wake.
+The live demo above runs on Render. The repo includes `render.yaml`, so it
+deploys as a Docker web service: on Render, choose New, then Blueprint, and
+point it at this repo. Render reads `render.yaml`, builds the Dockerfile, and
+starts gunicorn on its injected `$PORT`. The free instance sleeps when idle, so
+the first request after a pause takes a few seconds to wake.
 
 ## Testing
 
 ```bash
-python -m pytest            # backend: 10 passed
+python -m pytest            # backend: 17 passed
 cd frontend && npm test     # frontend: component + validation specs
 ```
 
-Backend coverage includes the sample combination, parametrized edge cases
-(all-zeros, all-nines, sequential), and input-validation rejections.
+Backend coverage includes the algorithm (sample combination, parametrized edge
+cases, input-validation rejections) and the API (endpoint result shape, cache
+hit on a repeat request, and `400`s on bad input).
 
 ## Design decisions
 
@@ -313,6 +311,11 @@ Backend coverage includes the sample combination, parametrized edge cases
 - Client-controlled pacing. The stream's per-attempt delay is a request
   parameter, clamped server-side, so one endpoint serves both a fast read and a
   slow, watchable animation without changing the compute.
+- Keyspace framing. The UI derives combinations eliminated and a brute-force
+  comparison from the same stream, making the algorithm's constant-work property
+  visible instead of just stated.
+- Themed and accessible. Colors are CSS variables with a light/dark toggle; live
+  counters use `aria-live` and animations respect `prefers-reduced-motion`.
 - Validation on both sides. Digits-only sanitization on the client, plus an
   authoritative `validate_combination()` on the server that returns `400` on
   bad input.
@@ -323,9 +326,9 @@ Backend coverage includes the sample combination, parametrized edge cases
 
 ## Possible next steps
 
-- Memoize `crack_safe`; the output is deterministic, so caching is a safe win.
-- Containerize with a multi-stage Dockerfile (Node build stage, then a slim
-  Python runtime).
 - Add a property-based test (Hypothesis) asserting at most 92 attempts across
   random combinations.
 - Add an end-to-end test (Playwright) asserting the counter freezes on crack.
+- Back the result cache with Redis so it survives restarts and is shared across
+  instances.
+- Offer Server-Sent Events as an alternative transport with auto-reconnect.
