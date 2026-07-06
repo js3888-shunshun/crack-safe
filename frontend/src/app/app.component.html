@@ -1,7 +1,18 @@
 <main class="shell">
+  <header class="topbar">
+    <span class="eyebrow">Full-stack safe cracking service</span>
+    <button
+      type="button"
+      class="theme-toggle"
+      (click)="toggleTheme()"
+      [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' theme'"
+    >
+      {{ theme() === 'dark' ? 'Light' : 'Dark' }} mode
+    </button>
+  </header>
+
   <section class="hero">
     <div>
-      <p class="eyebrow">Full-stack safe cracking service</p>
       <h1>Crack the 10-digit safe</h1>
       <p class="subtitle">
         Enter the true combination. This Angular frontend calls the Flask
@@ -10,10 +21,22 @@
       </p>
     </div>
     <div class="safe-card" aria-hidden="true">
-      <div class="safe-door">
-        <div class="safe-screen">{{ crackedSoFar() }}</div>
+      <div class="safe-door" [class.open]="status() === 'done'">
+        <div class="safe-screen">
+          @for (cell of digitCells(); track $index) {
+            <span class="digit" [class]="'digit ' + cell.state">{{ cell.display }}</span>
+          }
+        </div>
         <div class="dial" [class.spinning]="status() === 'running'"></div>
       </div>
+      @if (status() === 'done') {
+        <div class="confetti" aria-hidden="true">
+          @for (piece of confettiPieces; track $index) {
+            <i [style.left.%]="piece.left" [style.animation-delay.ms]="piece.delay"
+               [style.background]="piece.color"></i>
+          }
+        </div>
+      }
     </div>
   </section>
 
@@ -32,10 +55,34 @@
           [ngModel]="combination()"
           (ngModelChange)="onInput($event)"
         />
-        <button type="submit" [disabled]="status() === 'running' || !isValid()">
-          {{ status() === 'running' ? 'Cracking…' : 'Crack Safe' }}
+        <button type="submit" [disabled]="isRunning() || !isValid()">
+          {{ isRunning() ? 'Cracking…' : 'Crack Safe' }}
         </button>
       </div>
+
+      <div class="controls">
+        <div class="quick-fill">
+          <span class="metric-label">Quick fill</span>
+          <button type="button" (click)="fillRandom()" [disabled]="isRunning()">Random</button>
+          <button type="button" (click)="fillWorstCase()" [disabled]="isRunning()">Worst case</button>
+          <button type="button" (click)="fillBestCase()" [disabled]="isRunning()">Best case</button>
+        </div>
+        <label class="speed">
+          <span class="metric-label">Animation speed</span>
+          <input
+            type="range"
+            min="0"
+            max="60"
+            step="5"
+            [ngModel]="stepDelayMs()"
+            (ngModelChange)="stepDelayMs.set(+$event)"
+            name="speed"
+            [disabled]="isRunning()"
+          />
+          <span class="speed-value">{{ stepDelayMs() }} ms/step</span>
+        </label>
+      </div>
+
       <p class="hint">Must be exactly 10 digits (0&ndash;9).</p>
     </form>
   </section>
@@ -43,7 +90,7 @@
   <section class="grid">
     <article class="metric-card">
       <span class="metric-label">Attempts so far</span>
-      <strong>{{ attempts() }}</strong>
+      <strong aria-live="polite">{{ attempts() }}</strong>
     </article>
     <article class="metric-card">
       <span class="metric-label">Current score</span>

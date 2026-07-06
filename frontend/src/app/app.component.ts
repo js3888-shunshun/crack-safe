@@ -3,6 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { CrackSafeService, CrackUpdate } from './crack-safe.service';
 
 type Status = 'idle' | 'running' | 'done' | 'error';
+type Theme = 'dark' | 'light';
+
+interface DigitCell {
+  display: string;
+  state: 'found' | 'active' | 'unknown';
+}
 
 @Component({
   selector: 'app-root',
@@ -23,8 +29,20 @@ export class AppComponent {
   score = signal(0);
   timeTaken = signal(0);
   crackedSoFar = signal('??????????');
+  currentGuess = signal('');
   errorMsg = signal('');
   log = signal<string[]>([]);
+
+  /** UI pacing for the live stream, in milliseconds (speed slider). */
+  stepDelayMs = signal(15);
+  theme = signal<Theme>('dark');
+
+  /** Static confetti pieces rendered on a successful crack. */
+  readonly confettiPieces = Array.from({ length: 24 }, (_, i) => ({
+    left: (i * 100) / 24 + (i % 3) * 2,
+    delay: (i % 6) * 80,
+    color: ['#22d3ee', '#a78bfa', '#86efac', '#fca5a5', '#fcd34d'][i % 5],
+  }));
 
   /**
    * Authoritative compute time from the required POST /api/crack_safe/
@@ -55,6 +73,7 @@ export class AppComponent {
   });
 
   isValid = computed(() => /^\d{10}$/.test(this.combination().trim()));
+  isRunning = computed(() => this.status() === 'running');
 
   logText = computed(() =>
     this.log().length ? this.log().join('\n') : 'Submit a combination to start.'
@@ -76,6 +95,24 @@ export class AppComponent {
   eliminatedPct = computed(
     () => (this.eliminated() / this.totalKeyspace) * 100
   );
+
+  // --- Per-digit safe display ------------------------------------------------
+
+  digitCells = computed<DigitCell[]>(() => {
+    const cracked = this.crackedSoFar();
+    const guess = this.currentGuess();
+    const active = this.knownDigits(); // next position being probed
+    const running = this.isRunning();
+
+    return Array.from({ length: 10 }, (_, i): DigitCell => {
+      const c = cracked[i];
+      if (c && c !== '?') return { display: c, state: 'found' };
+      if (running && i === active) {
+        return { display: guess[i] ?? '?', state: 'active' };
+      }
+      return { display: '?', state: 'unknown' };
+    });
+  });
 
   // --- Brute-force comparison ------------------------------------------------
 
@@ -107,6 +144,30 @@ export class AppComponent {
     this.combination.set(value.replace(/\D/g, '').slice(0, 10));
   }
 
+  // --- Quick-fill helpers ----------------------------------------------------
+
+  fillRandom(): void {
+    let value = '';
+    for (let i = 0; i < 10; i++) value += Math.floor(Math.random() * 10);
+    this.combination.set(value);
+  }
+
+  fillWorstCase(): void {
+    this.combination.set('9999999999');
+  }
+
+  fillBestCase(): void {
+    this.combination.set('0000000000');
+  }
+
+  toggleTheme(): void {
+    const next: Theme = this.theme() === 'dark' ? 'light' : 'dark';
+    this.theme.set(next);
+    document.documentElement.setAttribute('data-theme', next);
+  }
+
+  // --- Submit / streaming ----------------------------------------------------
+
   submit(): void {
     const value = this.combination().trim();
     if (!/^\d{10}$/.test(value)) {
@@ -118,13 +179,15 @@ export class AppComponent {
     this.submitted = value;
     this.reset('running');
 
-    this.crackSafe.crackSafeStream(value).subscribe({
-      next: (update) => this.handleUpdate(update),
-      error: (err: Error) => {
-        this.status.set('error');
-        this.errorMsg.set(err.message || 'Something went wrong.');
-      },
-    });
+    this.crackSafe
+      .crackSafeStream(value, this.stepDelayMs() / 1000)
+      .subscribe({
+        next: (update) => this.handleUpdate(update),
+        error: (err: Error) => {
+          this.status.set('error');
+          this.errorMsg.set(err.message || 'Something went wrong.');
+        },
+      });
   }
 
   private reset(status: Status): void {
@@ -134,6 +197,7 @@ export class AppComponent {
     this.timeTaken.set(0);
     this.officialTime.set(null);
     this.crackedSoFar.set('??????????');
+    this.currentGuess.set('');
     this.errorMsg.set('');
     this.log.set([]);
   }
@@ -142,6 +206,7 @@ export class AppComponent {
     if (update.status === 'done') {
       this.attempts.set(update.attempts ?? this.attempts());
       this.timeTaken.set(update.time_taken ?? 0);
+      this.crackedSoFar.set(this.submitted);
       this.status.set('done');
       this.prepend(
         `Cracked in ${update.attempts} attempts (${update.time_taken}s)`
@@ -155,6 +220,7 @@ export class AppComponent {
     this.attempts.set(update.attempts ?? 0);
     this.score.set(update.score ?? 0);
     this.crackedSoFar.set(update.cracked_so_far ?? '??????????');
+    this.currentGuess.set(update.guess ?? '');
     this.prepend(
       `Attempt ${update.attempts}: guess=${update.guess}, score=${update.score}, known=${update.cracked_so_far}`
     );

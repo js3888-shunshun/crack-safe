@@ -44,7 +44,10 @@ export class CrackSafeService {
    * can update the attempt counter in real time. Emits one CrackUpdate per
    * backend attempt and completes when the safe is cracked.
    */
-  crackSafeStream(actualCombination: string): Observable<CrackUpdate> {
+  crackSafeStream(
+    actualCombination: string,
+    stepDelaySeconds = 0.015
+  ): Observable<CrackUpdate> {
     return new Observable<CrackUpdate>((subscriber) => {
       const controller = new AbortController();
 
@@ -53,7 +56,10 @@ export class CrackSafeService {
           const res = await fetch(`${this.base}/crack_safe_stream/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ actual_combination: actualCombination }),
+            body: JSON.stringify({
+              actual_combination: actualCombination,
+              step_delay: stepDelaySeconds,
+            }),
             signal: controller.signal,
           });
 

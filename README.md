@@ -35,7 +35,20 @@ attempts.
 | Frontend | Displays the results returned from the backend | Done |
 | Ultra bonus | Live attempt counter, updated in real time | Done |
 | Ultra bonus | Counter freezes once the safe is cracked | Done |
-| Extra | Per-digit reveal, score, progress bar, input sanitization, single-command run | Done |
+| Extra | See highlights below | Done |
+
+### Highlights beyond the spec
+
+- Keyspace visualization: a live count of combinations ruled out, computed as
+  `10^10 - 10^(10 - known digits)`, next to a smart-search vs brute-force
+  comparison (attempts, projected time, and speedup factor).
+- Per-digit safe display: 10 cells that light up as each position is solved,
+  with the active position highlighted while it is being probed.
+- Interactive controls: an animation-speed slider (which paces the backend
+  stream), quick-fill buttons (random, worst case, best case), and a
+  light/dark theme toggle.
+- Backend result caching, a production Dockerfile, and CI (see below).
+- Accessibility: `aria-live` on the live counters and reduced-motion support.
 
 ## Architecture
 
@@ -275,6 +288,9 @@ Backend coverage includes the sample combination, parametrized edge cases
   detection.
 - Progress relative to the worst case. The bar is scaled against the known
   92-attempt ceiling rather than an arbitrary value.
+- Client-controlled pacing. The stream's per-attempt delay is a request
+  parameter, clamped server-side, so one endpoint serves both a fast read and a
+  slow, watchable animation without changing the compute.
 - Validation on both sides. Digits-only sanitization on the client, plus an
   authoritative `validate_combination()` on the server that returns `400` on
   bad input.

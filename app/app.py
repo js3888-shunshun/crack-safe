@@ -93,13 +93,21 @@ def crack_safe_stream_endpoint():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
+    # Optional client-controlled pacing (a "speed" slider on the frontend).
+    # Clamp to a sane range; the cracking itself runs in well under a ms.
+    try:
+        step_delay = float(data.get("step_delay", 0.015))
+    except (TypeError, ValueError):
+        step_delay = 0.015
+    step_delay = max(0.0, min(step_delay, 0.1))
+
     updates: queue.Queue[dict | None] = queue.Queue()
 
     def progress_callback(update: dict) -> None:
         updates.put(update)
-        # Small delay so the live counter is visible in the UI; the cracking
-        # itself runs in well under a millisecond.
-        time.sleep(0.015)
+        # Small delay so the live counter is visible in the UI.
+        if step_delay:
+            time.sleep(step_delay)
 
     def worker() -> None:
         try:
