@@ -19,7 +19,8 @@ time.
   </a>
 </p>
 
-> Live demo: _add the Render URL here after the first deploy._
+> Live demo: **https://crack-safe.onrender.com/**
+> (free instance; the first request after idle takes a few seconds to wake)
 
 ## Overview
 
