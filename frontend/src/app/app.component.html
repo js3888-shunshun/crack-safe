@@ -1,0 +1,73 @@
+<main class="shell">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Full-stack safe cracking service</p>
+      <h1>Crack the 10-digit safe</h1>
+      <p class="subtitle">
+        Enter the true combination. This Angular frontend calls the Flask
+        backend, which runs the Part 1 <code>crack_safe</code> function, returns
+        attempts and runtime, and streams live progress while it works.
+      </p>
+    </div>
+    <div class="safe-card" aria-hidden="true">
+      <div class="safe-door">
+        <div class="safe-screen">{{ crackedSoFar() }}</div>
+        <div class="dial" [class.spinning]="status() === 'running'"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <form (ngSubmit)="submit()">
+      <label for="combination">Actual combination</label>
+      <div class="input-row">
+        <input
+          id="combination"
+          name="combination"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          maxlength="10"
+          placeholder="0800666666"
+          [ngModel]="combination()"
+          (ngModelChange)="onInput($event)"
+        />
+        <button type="submit" [disabled]="status() === 'running' || !isValid()">
+          {{ status() === 'running' ? 'Cracking…' : 'Crack Safe' }}
+        </button>
+      </div>
+      <p class="hint">Must be exactly 10 digits (0&ndash;9).</p>
+    </form>
+  </section>
+
+  <section class="grid">
+    <article class="metric-card">
+      <span class="metric-label">Attempts so far</span>
+      <strong>{{ attempts() }}</strong>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Current score</span>
+      <strong>{{ score() }} / 10</strong>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Time taken</span>
+      <strong>{{ timeTaken().toFixed(6) }}s</strong>
+    </article>
+  </section>
+
+  <section class="panel results-panel">
+    <div class="result-header">
+      <h2>Live status</h2>
+      <span class="badge" [class]="'badge ' + status()">{{ statusLabel() }}</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-bar" [style.width.%]="progress()"></div>
+    </div>
+
+    @if (status() === 'error') {
+      <p class="error-text">{{ errorMsg() }}</p>
+    }
+
+    <pre>{{ logText() }}</pre>
+  </section>
+</main>

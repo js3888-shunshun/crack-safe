@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+.pytest_cache/
+
+# Node / Angular
+node_modules/
+.angular/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Note: app/static/ holds the generated Angular production build and IS
+# committed on purpose, so `python app.py` runs the full app with no build step.
