@@ -13,5 +13,9 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Source recording + intermediate palette; only assets/demo.gif is committed
+*.mp4
+assets/palette.png
+
 # Note: app/static/ holds the generated Angular production build and IS
 # committed on purpose, so `python app.py` runs the full app with no build step.

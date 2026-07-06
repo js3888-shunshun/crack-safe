@@ -16,6 +16,10 @@ time.
 > Live demo: **https://crack-safe.onrender.com/**
 > (free instance; the first request after idle takes a few seconds to wake)
 
+## Demo
+
+![Crack Safe demo: entering a combination and watching the live cracking progress](assets/demo.gif)
+
 ## Overview
 
 The user enters the true 10-digit combination. The Angular UI sends it to the
