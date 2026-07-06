@@ -1,0 +1,10 @@
+# Render Blueprint. Deploys the app from the multi-stage Dockerfile.
+# Render injects $PORT at runtime; the container's CMD binds gunicorn to it.
+services:
+  - type: web
+    name: crack-safe
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true

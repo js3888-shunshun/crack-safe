@@ -13,6 +13,14 @@ time.
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white" />
 </p>
 
+<p>
+  <a href="https://render.com/deploy?repo=https://github.com/js3888-shunshun/crack-safe">
+    <img alt="Deploy to Render" src="https://render.com/images/deploy-to-render-button.svg" />
+  </a>
+</p>
+
+> Live demo: _add the Render URL here after the first deploy._
+
 ## Overview
 
 The user enters the true 10-digit combination. The Angular UI sends it to the
@@ -263,6 +271,19 @@ API, from a production WSGI server (gunicorn):
 ```bash
 docker compose up --build                  # http://127.0.0.1:5000
 ```
+
+### Deploy to Render
+
+The repo includes `render.yaml`, so it deploys as a Docker web service:
+
+1. Push to GitHub (already done).
+2. On Render, choose New, then Blueprint, and point it at this repo (or use
+   the "Deploy to Render" button above). Render reads `render.yaml`.
+3. Render builds the Dockerfile and starts gunicorn on its injected `$PORT`.
+4. Copy the resulting `*.onrender.com` URL into the live-demo line above.
+
+The free instance sleeps when idle, so the first request after a pause takes a
+few seconds to wake.
 
 ## Testing
 
